@@ -4,6 +4,21 @@ import { OpenAIParser } from '../lib/ai/OpenAIParser.js';
 import { ApiError } from '../lib/http/ApiError.js';
 import { jsonCompletion, VALID_EXPENSE } from './helpers.js';
 
+test('Groq uses its own endpoint and retains strict expense validation', async () => {
+  let request;
+  const parser = new OpenAIParser({ provider: 'groq', apiKey: 'fake-groq-key', fetchImpl: async (url, options) => {
+    request = { url, ...options, body: JSON.parse(options.body) };
+    return jsonCompletion(VALID_EXPENSE);
+  } });
+  assert.equal((await parser.parse('coffee 235')).amount_paise, 23500);
+  assert.equal(request.url, 'https://api.groq.com/openai/v1/chat/completions');
+  assert.equal(request.headers.Authorization, 'Bearer fake-groq-key');
+  assert.equal(request.body.model, 'openai/gpt-oss-20b');
+  assert.equal(request.body.response_format.json_schema.strict, true);
+  assert.equal(request.body.include_reasoning, false);
+  assert.throws(() => new OpenAIParser({ provider: 'unknown' }), ApiError);
+});
+
 test('requests strict structured output and validates a successful completion', async () => {
   let request;
   const parser = new OpenAIParser({
@@ -119,4 +134,36 @@ test('aborts a stalled HTTP request within the configured timeout', async () => 
     return true;
   });
   assert.equal(receivedSignal.aborted, true);
+});
+
+ test('preprocessing preserves text and provides conservative numeric hints', async () => {
+ const { prepareExpense } = await import('../lib/ai/prepareExpense.js');
+ assert.equal(prepareExpense('coffee 235').numeric_amount_hint,235);
+ assert.equal(prepareExpense('2 dosas for 235').numeric_amount_hint,null);
+ assert.equal(prepareExpense('coffee $5').numeric_amount_hint,null);
+ assert.equal(prepareExpense('shoes 1,200').numeric_amount_hint,1200);
+ assert.equal(prepareExpense('coffee -80').numeric_amount_hint,null);
+ });
+ test('rejects AI amount changes when the input has one clear numeric amount',async()=>{
+ const parser=new OpenAIParser({apiKey:'fake',fetchImpl:async()=>jsonCompletion({...VALID_EXPENSE,amount:99})});
+ await assert.rejects(parser.parse('coffee 235'),e=>e.code==='AMOUNT_MISMATCH');
+ });
+
+test('Cloudflare translates its response envelope and validates output', async () => {
+  const previous = process.env.CLOUDFLARE_ACCOUNT_ID;
+  process.env.CLOUDFLARE_ACCOUNT_ID = 'a'.repeat(32);
+  try {
+    let request;
+    const parser = new OpenAIParser({provider:'cloudflare',apiKey:'fake-key',fetchImpl:async(url,options)=>{
+      request={url,body:JSON.parse(options.body)};
+      return Response.json({success:true,result:{response:JSON.stringify(VALID_EXPENSE)}});
+    }});
+    assert.equal((await parser.parse('coffee 235')).amount,235);
+    assert.ok(request.url.startsWith('https://api.cloudflare.com/client/v4/accounts/'));
+    assert.equal(request.body.response_format.type,'json_object');
+    assert.equal(request.body.max_tokens,300);
+  } finally {
+    if(previous===undefined) delete process.env.CLOUDFLARE_ACCOUNT_ID;
+    else process.env.CLOUDFLARE_ACCOUNT_ID=previous;
+  }
 });

@@ -72,7 +72,10 @@ Add these server-side environment variables for the production deployment:
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `TURSO_DATABASE_URL` | Remote Turso database URL |
 | `TURSO_AUTH_TOKEN` | Database auth token |
-| `OPENAI_API_KEY` | Your server-side OpenAI API key |
+| `AI_PROVIDER` | `groq` for Groq or `openai` (default) |
+| `GROQ_API_KEY` | Server-side Groq key when using Groq |
+| `GROQ_MODEL` | Optional; defaults to `openai/gpt-oss-20b`, supporting strict JSON output |
+| `OPENAI_API_KEY` | Server-side OpenAI key when using OpenAI |
 | `OPENAI_MODEL` | Optional; defaults to `gpt-4o-mini` |
 
 The first deployment can establish the Vercel domain without credentials; it will show the sign-in setup state and a working sample journal. After setting `APP_URL`, registering the Google callback, and saving the credentials, redeploy so the functions receive them. A source deployment without credentials is not a verified live sign-in deployment.
@@ -95,3 +98,9 @@ The automated suite covers these boundaries with mocked Google verification and 
 - [Vercel: GitHub integration](https://vercel.com/docs/git/vercel-for-github)
 - [Vercel: environment variables](https://vercel.com/docs/environment-variables)
 - [Turso: quickstart](https://docs.turso.tech/quickstart)
+
+### Cloudflare Workers AI option
+
+Set `AI_PROVIDER=cloudflare`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_API_TOKEN` in the server environment. The token needs Workers AI Read and Edit permissions for the selected account. The adapter uses `@cf/meta/llama-3.3-70b-instruct-fp8-fast` with JSON mode; application validation remains mandatory. Keep the Workers Free plan to stop requests at its daily allowance instead of enabling paid overages. This setup does not require moving hosting away from Vercel.
+
+The parser provides conservative numeric/category hints, retains the original description, and rejects conflicting AI amounts. Multiple numbers remain for semantic interpretation rather than assuming every number is a price. Accuracy checks use synthetic examples, never private database entries; a passing sample is not a guarantee for arbitrary wording.
