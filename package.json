@@ -1,0 +1,21 @@
+{
+  "name": "penny-money-leaks",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A minimal, AI-powered personal spending journal for Vercel and Turso.",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env scripts/dev.js",
+    "build": "node scripts/build.js",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node scripts/check.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.15",
+    "google-auth-library": "^11.1.0"
+  }
+}

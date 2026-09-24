@@ -1,0 +1,52 @@
+.site-header { gap:24px; }
+.app-nav { display:flex; gap:8px; padding:5px; background:#ecefed; border-radius:11px; }
+.nav-button { border:0; background:transparent; color:#7b8580; font-size:13px; padding:10px 17px; border-radius:8px; }
+.nav-button.is-active { color:#284c38; background:#fff; box-shadow:0 2px 5px #21302708; }
+.nav-button span { margin-left:6px; font-size:12px; }
+.account-control { display:flex; gap:9px; align-items:center; font-size:12px; }
+.account-control #user-name { max-width:105px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#signout-button { border:0; border-left:1px solid #dfe5df; padding:3px 0 3px 13px; background:transparent; color:#718075; margin-left:3px; font-size:12px; }
+.auth-view { display:grid; grid-template-columns:1.15fr 1fr; gap:75px; align-items:center; min-height:650px; padding:72px 0 70px; }
+.welcome-mark { display:block; font-size:52px; line-height:1; color:#7e9566; margin-bottom:35px; }
+.auth-intro .eyebrow { color:#7c8d7d; }
+.auth-intro h1 { font-size:clamp(42px,5vw,62px); font-weight:550; line-height:1.09; letter-spacing:-2.7px; margin-top:18px; color:#233d31; }
+.welcome-copy { font-size:17px; color:#7c8580; line-height:1.8; margin-top:25px; }
+.welcome-features { display:flex; flex-direction:column; gap:14px; font-size:13px; color:#6d7d70; margin-top:35px; }
+.welcome-features span::before { content:'✓'; display:inline-grid; place-items:center; width:20px; height:20px; background:#e7eedd; border-radius:50%; margin-right:10px; color:#788c64; font-size:10px; }
+.signin-card { padding:34px; box-shadow:0 10px 45px #22352703; }
+.signin-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:26px; gap:15px; }
+.signin-heading .eyebrow { font-size:10px; letter-spacing:1px; color:#9aab99; }
+.signin-card h2 { font-size:24px; font-weight:550; letter-spacing:-.6px; }
+.signin-card>p:not(.auth-status):not(.signin-footnote) { font-size:14px; line-height:1.8; color:#859087; margin-top:13px; }
+.google-button { width:100%; display:flex; align-items:center; justify-content:center; gap:12px; background:#fff; color:#3c4641; padding:15px 18px; border:1px solid #d9dfdb; border-radius:10px; margin-top:30px; font-size:14px; font-weight:550; transition:background .2s, border-color .2s; }
+.google-button:hover { background:#f7f9f7; border-color:#94a48f; }
+.google-button:disabled { color:#839086; background:#f7f8f7; cursor:wait; }
+.auth-status { min-height:30px; margin-top:12px; font-size:12px; color:#8a7361; line-height:1.65; }
+.signin-divider { display:flex; align-items:center; gap:12px; color:#a0a8a2; font-size:12px; margin:17px 0; white-space:nowrap; }
+.signin-divider::before,.signin-divider::after { content:''; height:1px; background:#ecf0ec; flex:1; }
+.preview-button { display:flex; justify-content:space-between; gap:14px; width:100%; border:0; background:#edf4e6; padding:14px 17px; border-radius:10px; color:#6b825e; font-size:13px; }
+.preview-button:hover { background:#e1ecd8; }
+.signin-footnote { text-align:center; font-size:12px; line-height:1.8; margin-top:23px; color:#9ba49d; }
+.privacy-page { max-width:720px; margin:0 auto; padding:60px 0; }
+.privacy-page h1 { font-size:38px; }
+.privacy-page h2 { font-size:20px; margin:30px 0 12px; }
+.privacy-page p { font-size:16px; color:#67766d; line-height:1.9; margin-top:16px; }
+@media(max-width:1000px) { .header-right .today-date { display:none; } .auth-view { gap:35px; } .signin-card { padding:27px; } }
+@media(max-width:700px) {
+  .site-header { height:auto; min-height:88px; flex-wrap:wrap; padding:22px 0 16px; gap:18px; }
+  .app-nav { order:3; width:100%; }
+  .nav-button { flex:1; padding:9px 15px; }
+  .header-right { margin-left:auto; gap:10px; }
+  .account-control #user-name { display:none; }
+  .account-control .avatar { display:grid; width:28px; height:28px; font-size:11px; }
+  .auth-view { grid-template-columns:1fr; gap:35px; padding:36px 0 30px; }
+  .welcome-mark { display:none; }
+  .auth-intro h1 { font-size:43px; letter-spacing:-1.8px; }
+  .auth-intro .eyebrow { font-size:11px; }
+  .welcome-copy { font-size:15px; margin-top:18px; }
+  .welcome-features { display:none; }
+  .signin-card { padding:25px; }
+  .signin-heading { margin-bottom:21px; }
+  .signin-card h2 { font-size:23px; }
+  .auth-status { min-height:0; }
+}
