@@ -269,7 +269,7 @@ export function createReportsView({ root, request, getDemo, onUnauthorized }) {
       totalCard.append(createNode('p', 'reports-metric-detail', `${money(comparison.total_spent)} previously · ${previousLabel}`));
       if (comparison.days_elapsed < result.days_elapsed) totalCard.append(createNode('p', 'reports-metric-detail', `Compared with the first ${comparison.days_elapsed} days of this period (${money(comparison.current_total_spent)}).`));
     }
-    const averageCard = metric('Daily average', money(result.average_daily_spend), `Across ${({ all: 'All payments', cash: 'Cash', credit_card: 'Credit card' })[result.payment_method || 'all']} · ${result.days_elapsed} ${result.days_elapsed === 1 ? 'calendar day' : 'calendar days'}`);
+    const averageCard = metric('Daily average', money(result.average_daily_spend), `Across ${result.days_elapsed} ${result.days_elapsed === 1 ? 'calendar day' : 'calendar days'}`);
     averageCard.append(createNode('p', 'reports-metric-detail reports-average-note', 'Quiet days count, too. Averages include days with no recorded spending.'));
     const leakCard = metric('Small discretionary spends', money(result.leak_total), `${result.leak_count} ${result.leak_count === 1 ? 'purchase' : 'purchases'} under ₹500`);
     leakCard.classList.add('reports-leak-metric');
