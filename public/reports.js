@@ -56,7 +56,8 @@ function categoryInfo(category) { return categories[category] || categories.othe
 function rounded(value) { return Math.round((value + Number.EPSILON) * 100) / 100; }
 
 // The preview uses only its actual in-memory expenses, including an empty past.
-export function buildDemoReport(allExpenses, period = 'week', anchor = todayKey(), now = new Date()) {
+export function buildDemoReport(allExpenses, period = 'week', anchor = todayKey(), now = new Date(), paymentMethod = 'all') {
+  allExpenses = allExpenses.filter((expense) => paymentMethod === 'all' || expense.payment_method === paymentMethod);
   const today = todayKey(now);
   const { start, end } = periodBounds(period, anchor);
   const elapsedEnd = end < today ? end : today;
@@ -100,7 +101,7 @@ export function buildDemoReport(allExpenses, period = 'week', anchor = todayKey(
   const previousPaise = within(allExpenses, prior.start, previousEnd).reduce((sum, expense) => sum + Math.round(expense.amount * 100), 0);
   const matchedCurrentPaise = within(expenses, start, shiftDay(start, matchedDays - 1)).reduce((sum, expense) => sum + Math.round(expense.amount * 100), 0);
   return {
-    period, start_date: start, end_date: end, timezone: 'Asia/Kolkata', currency: 'INR',
+    payment_method: paymentMethod, period, start_date: start, end_date: end, timezone: 'Asia/Kolkata', currency: 'INR',
     total_spent: totalPaise / 100, expense_count: expenses.length, leak_total: leakPaise / 100, leak_count: leakCount,
     daily_leak_velocity: daysElapsed ? rounded(leakPaise / 100 / daysElapsed) : 0,
     leak_share_percent: totalPaise ? rounded(leakPaise / totalPaise * 100) : 0,
@@ -129,6 +130,7 @@ export function reportCsv(data) {
 
 export function createReportsView({ root, request, getDemo, onUnauthorized }) {
   let period = 'week';
+  let paymentMethod = 'all';
   let anchor = todayKey();
   let followCurrent = true;
   let version = 0;
@@ -178,14 +180,29 @@ export function createReportsView({ root, request, getDemo, onUnauthorized }) {
   actions.append(refreshButton, downloadButton);
   toolbar.append(segments, navigation, actions);
 
+  const paymentFilters = createNode('div', 'reports-payment-filters');
+  paymentFilters.append(createNode('span', '', 'Paid with'));
+  const paymentSegments = createNode('div', 'reports-segments');
+  paymentSegments.setAttribute('role', 'group');
+  paymentSegments.setAttribute('aria-label', 'Payment method');
+  const paymentButtons = new Map();
+  for (const [key, label] of [['all', 'All'], ['cash', 'Cash'], ['credit_card', 'Credit card']]) {
+    const control = button('reports-segment', label);
+    control.addEventListener('click', () => { paymentMethod = key; refresh(); });
+    paymentButtons.set(key, control);
+    paymentSegments.append(control);
+  }
+  paymentFilters.append(paymentSegments);
+
   const status = createNode('p', 'reports-status');
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
   const content = createNode('div', 'reports-content');
   content.append(createNode('div', 'reports-initial', 'Choose a period to see where your money went.'));
-  root.replaceChildren(heading, toolbar, status, content);
+  root.replaceChildren(heading, toolbar, paymentFilters, status, content);
 
   function updateControls() {
+    for (const [key, control] of paymentButtons) control.setAttribute('aria-pressed', String(key === paymentMethod));
     for (const [key, control] of segmentButtons) control.setAttribute('aria-pressed', String(key === period));
     const { start, end } = periodBounds(period, anchor);
     periodText.textContent = periodLabel(period, start, end);
@@ -211,8 +228,8 @@ export function createReportsView({ root, request, getDemo, onUnauthorized }) {
     updateControls();
     try {
       const demo = getDemo();
-      const result = demo ? buildDemoReport(demo.getExpenses().expenses, period, anchor)
-        : await request(`/api/reports?${new URLSearchParams({ period, date: anchor })}`);
+      const result = demo ? buildDemoReport(demo.getExpenses().expenses, period, anchor, new Date(), paymentMethod)
+        : await request(`/api/reports?${new URLSearchParams({ period, date: anchor, payment_method: paymentMethod })}`);
       if (currentVersion !== version) return false;
       data = result;
       stale = false;
@@ -235,7 +252,7 @@ export function createReportsView({ root, request, getDemo, onUnauthorized }) {
 
   function render(result) {
     const fragment = document.createDocumentFragment();
-    const rangeNote = createNode('p', 'reports-range-note', `${periodLabel(result.period, result.start_date, result.end_date)} · ${result.days_elapsed} ${result.days_elapsed === 1 ? 'day' : 'days'} included`);
+    const rangeNote = createNode('p', 'reports-range-note', `${periodLabel(result.period, result.start_date, result.end_date)} · ${({ all: 'All payments', cash: 'Cash', credit_card: 'Credit card' })[result.payment_method || 'all']} · ${result.days_elapsed} ${result.days_elapsed === 1 ? 'day' : 'days'} included`);
     fragment.append(rangeNote);
     const metrics = createNode('div', 'reports-metrics');
     const comparison = result.comparison;
@@ -252,7 +269,7 @@ export function createReportsView({ root, request, getDemo, onUnauthorized }) {
       totalCard.append(createNode('p', 'reports-metric-detail', `${money(comparison.total_spent)} previously · ${previousLabel}`));
       if (comparison.days_elapsed < result.days_elapsed) totalCard.append(createNode('p', 'reports-metric-detail', `Compared with the first ${comparison.days_elapsed} days of this period (${money(comparison.current_total_spent)}).`));
     }
-    const averageCard = metric('Daily average', money(result.average_daily_spend), `Across ${result.days_elapsed} ${result.days_elapsed === 1 ? 'calendar day' : 'calendar days'}`);
+    const averageCard = metric('Daily average', money(result.average_daily_spend), `Across ${({ all: 'All payments', cash: 'Cash', credit_card: 'Credit card' })[result.payment_method || 'all']} · ${result.days_elapsed} ${result.days_elapsed === 1 ? 'calendar day' : 'calendar days'}`);
     averageCard.append(createNode('p', 'reports-metric-detail reports-average-note', 'Quiet days count, too. Averages include days with no recorded spending.'));
     const leakCard = metric('Small discretionary spends', money(result.leak_total), `${result.leak_count} ${result.leak_count === 1 ? 'purchase' : 'purchases'} under ₹500`);
     leakCard.classList.add('reports-leak-metric');
@@ -412,7 +429,7 @@ export function createReportsView({ root, request, getDemo, onUnauthorized }) {
         csvController = controller;
         const timeout = setTimeout(() => controller.abort(), 28000);
         try {
-          const response = await fetch(`/api/reports?${new URLSearchParams({ period: downloaded.period, date: downloaded.start_date, format: 'csv' })}`, { credentials: 'same-origin', signal: controller.signal, headers: { Accept: 'text/csv' } });
+          const response = await fetch(`/api/reports?${new URLSearchParams({ period: downloaded.period, date: downloaded.start_date, payment_method: downloaded.payment_method || 'all', format: 'csv' })}`, { credentials: 'same-origin', signal: controller.signal, headers: { Accept: 'text/csv' } });
           if (!response.ok) {
             let message = 'Your CSV could not be downloaded. Please try again.';
             try { const error = await response.json(); message = error.error?.message || error.message || message; } catch { /* Preserve a readable error for non-JSON failures. */ }
@@ -451,6 +468,7 @@ export function createReportsView({ root, request, getDemo, onUnauthorized }) {
     exporting = false;
     stale = true;
     period = 'week';
+    paymentMethod = 'all';
     anchor = todayKey();
     followCurrent = true;
     status.textContent = '';

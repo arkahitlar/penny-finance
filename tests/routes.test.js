@@ -152,9 +152,10 @@ test('report JSON and CSV exports use authenticated identity and normalized quer
   await handler(mockRequest({ method: 'GET', url: '/api/reports?period=week&date=2026-09-24&user_id=bob' }), json);
   assert.equal(json.statusCode, 200);
   assert.deepEqual(json.body.data, report);
-  assert.deepEqual(calls[0], [user.id, { period: 'week', date: '2026-09-24' }]);
+  assert.deepEqual(calls[0], [user.id, { period: 'week', date: '2026-09-24', payment_method: 'all' }]);
   const csv = mockResponse();
-  await handler(mockRequest({ method: 'GET', url: '/api/reports?period=week&date=2026-09-24&format=csv' }), csv);
+  await handler(mockRequest({ method: 'GET', url: '/api/reports?period=week&date=2026-09-24&payment_method=cash&format=csv' }), csv);
+  assert.equal(calls[1][1].payment_method, 'cash');
   assert.equal(csv.statusCode, 200);
   assert.equal(csv.headers['content-type'], 'text/csv; charset=utf-8');
   assert.equal(csv.headers['cache-control'], 'no-store');
@@ -165,7 +166,7 @@ test('report JSON and CSV exports use authenticated identity and normalized quer
 test('report exports reject ambiguous filters and unsupported output formats', async () => {
   let called = false;
   const handler = createReportsHandler({ ...auth, service: { async report() { called = true; } } });
-  for (const query of ['period=day&period=week', 'date=2026-09-24&date=2026-09-23', 'format=csv&format=json', 'format=html']) {
+  for (const query of ['period=day&period=week', 'date=2026-09-24&date=2026-09-23', 'format=csv&format=json', 'format=html', 'payment_method=cash&payment_method=credit_card']) {
     const response = mockResponse();
     await handler(mockRequest({ method: 'GET', url: `/api/reports?${query}` }), response);
     assert.equal(response.statusCode, 400);

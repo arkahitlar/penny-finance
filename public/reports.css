@@ -171,3 +171,5 @@
   .reports-purchases { padding:19px 16px; }
   .reports-purchase-mark { display:none; }
 }
+
+.reports-payment-filters { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:18px; font-size:13px; color:#5e7263; }

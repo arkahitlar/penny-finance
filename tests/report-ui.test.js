@@ -92,3 +92,19 @@ test('CSV escapes formula-like names, double quotes, embedded line breaks, and I
   assert.ok(csv.includes('"Credit card","80.00"'));
   assert.ok(csv.includes('"Not specified","20.00"'));
 });
+
+
+test('demo payment filter also scopes previous-period comparisons and exports', () => {
+  const rows = [
+    { ...expense('Cash', 80, '2026-09-24T06:00:00Z'), payment_method: 'cash' },
+    { ...expense('Card', 200, '2026-09-24T06:00:00Z'), payment_method: 'credit_card' },
+    { ...expense('Prior cash', 40, '2026-09-23T06:00:00Z'), payment_method: 'cash' },
+    { ...expense('Prior card', 500, '2026-09-23T06:00:00Z'), payment_method: 'credit_card' },
+  ];
+  const result = buildDemoReport(rows, 'day', '2026-09-24', new Date('2026-09-24T10:00:00Z'), 'cash');
+  assert.equal(result.payment_method, 'cash');
+  assert.equal(result.total_spent, 80);
+  assert.equal(result.comparison.total_spent, 40);
+  assert.equal(result.comparison.change_percent, 100);
+  assert.ok(!reportCsv(result).includes('Card'));
+});

@@ -29,12 +29,12 @@ export async function testDatabase(t, { migrate = true } = {}) {
 }
 
 export async function addExpense(repository, userId, {
-  amount = 100, category = 'food_drink', flag = true, date = '2026-09-24',
+  paymentMethod = 'unspecified', amount = 100, category = 'food_drink', flag = true, date = '2026-09-24',
   createdAt = `${date}T06:00:00.000Z`, item = 'Coffee', key = randomUUID(),
 } = {}) {
   const id = randomUUID();
   return repository.create(userId, {
-    id, item, amount_paise: Math.round(amount * 100), category,
+    id, item, payment_method: paymentMethod, amount_paise: Math.round(amount * 100), category,
     is_potential_leak: flag, created_at: createdAt,
     idempotency_key: key, request_hash: createHash('sha256').update(id).digest('hex'),
   });

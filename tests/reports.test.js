@@ -156,3 +156,35 @@ test('reports refuse invalid query periods and dates before querying storage', a
   }
   assert.equal(getPeriodRange({ period: 'day' }, NOW).days_elapsed, 1);
 });
+
+
+test('payment filters scope all aggregates, comparisons and CSV without excluding legacy rows from All', async (t) => {
+  const { repository } = await testDatabase(t);
+  for (let i = 0; i < 3; i++) await addExpense(repository, 'alice', { paymentMethod: 'cash', amount: 100, item: 'Cash coffee' });
+  await addExpense(repository, 'alice', { paymentMethod: 'credit_card', amount: 600, item: 'Card purchase' });
+  await addExpense(repository, 'alice', { amount: 50, item: 'Legacy' });
+  await addExpense(repository, 'bob', { paymentMethod: 'cash', amount: 900 });
+  await addExpense(repository, 'alice', { paymentMethod: 'cash', amount: 150, date: '2026-09-23' });
+  await addExpense(repository, 'alice', { paymentMethod: 'credit_card', amount: 200, date: '2026-09-23' });
+  const service = makeService(repository);
+  const cash = await service.report('alice', { payment_method: 'cash' });
+  assert.equal(cash.total_spent, 300);
+  assert.equal(cash.expense_count, 3);
+  assert.equal(cash.leak_total, 300);
+  assert.equal(cash.average_daily_spend, 300);
+  assert.equal(cash.series[0].total, 300);
+  assert.equal(cash.groups[0].total, 300);
+  assert.equal(cash.warnings[0].count, 3);
+  assert.equal(cash.comparison.total_spent, 150);
+  assert.equal(cash.comparison.change_percent, 100);
+  assert.ok(cash.expenses.every(row => row.payment_method === 'cash'));
+  assert.ok(!reportToCsv(cash).includes('Card purchase'));
+  const card = await service.report('alice', { payment_method: 'credit_card' });
+  assert.equal(card.total_spent, 600);
+  assert.equal(card.leak_total, 0);
+  assert.deepEqual(card.warnings, []);
+  assert.equal(card.comparison.total_spent, 200);
+  assert.equal((await service.report('alice')).total_spent, 950);
+  assert.equal((await service.report('charlie', { payment_method: 'cash' })).total_spent, 0);
+  await assert.rejects(service.report('alice', { payment_method: 'invalid' }), error => error.statusCode === 400);
+});
