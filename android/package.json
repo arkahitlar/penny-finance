@@ -1,0 +1,11 @@
+{
+  "name": "penny-android",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "generate": "node generate.cjs"
+  },
+  "devDependencies": {
+    "@bubblewrap/core": "1.25.0"
+  }
+}

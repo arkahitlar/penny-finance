@@ -8,3 +8,23 @@ dist/
 *.db-*
 .DS_Store
 artifacts/
+android/.gradle/
+android/**/build/
+android/local.properties
+android/.signing/
+*.keystore
+*.jks
+*.apk
+!public/downloads/*.apk
+*.aab
+tmp/
+output/android/
+# Reproducible Bubblewrap outputs; regenerate from android/generate.cjs.
+/android/app/
+/android/gradle/
+/android/build.gradle
+/android/settings.gradle
+/android/gradle.properties
+/android/gradlew
+/android/gradlew.bat
+/android/store_icon.png

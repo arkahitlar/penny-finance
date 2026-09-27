@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.penny_gsk",
+      "sha256_cert_fingerprints": ["F1:02:E1:D6:EB:EA:58:48:55:E5:DA:73:B7:5F:2C:64:8B:A9:6A:BD:07:44:0A:E0:4F:C0:7B:B7:E4:E6:87:4D"]
+    }
+  }
+]
