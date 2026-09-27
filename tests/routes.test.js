@@ -16,7 +16,7 @@ test('all routes reject unsupported methods before resolving database or AI depe
   for (const [handler, method, allowed] of [
     [createParseExpenseHandler(), 'GET', 'POST'],
     [createPreviewExpenseHandler(), 'GET', 'POST'],
-    [createExpensesHandler(), 'POST', 'GET'],
+    [createExpensesHandler(), 'POST', 'GET, PATCH, DELETE'],
     [createAnalyticsHandler(), 'DELETE', 'GET'],
     [createReportsHandler(), 'PUT', 'GET'],
   ]) {

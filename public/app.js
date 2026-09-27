@@ -1,9 +1,12 @@
 import { createDemo, emptyAnalytics } from './demo.js';
 import { createExpenseComposer } from './expenseComposer.js';
+import { createExpenseManager } from './expenseManager.js';
+import { todayInIndia, expenseDate, dateLabel } from './expenseDates.js';
+import { buildDemoReport } from './reports.js';
+import { calculateInsights } from './insights.js';
 
 const $ = (selector) => document.querySelector(selector);
 const rupees = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 2 });
-const timeFormat = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' });
 const categoryMeta = {
   food_drink: { name: 'Food & drink', color: '#9aab7d', background: '#f0f3e9', icon: '<path d="M5 3v7m3-7v7m-6-7v7a3 3 0 0 0 6 0m-3 3v8M16 3v18m0-18c5 3 5 9 0 9"/>' },
   transport: { name: 'Getting around', color: '#8c9caf', background: '#eef1f6', icon: '<rect x="4" y="4" width="16" height="13" rx="3"/><path d="M4 10h16M8 17l-2 4m10-4 2 4M8 14h.01M16 14h.01M8 4V2m8 2V2"/>' },
@@ -68,23 +71,27 @@ function renderExpenses(expenses) {
     icon.setAttribute('aria-hidden', 'true');
     // Only static, developer-owned SVG paths are inserted as markup.
     icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${category.icon}</svg>`;
-    const time = node('time', 'expense-time', timeFormat.format(new Date(expense.created_at)));
-    time.dateTime = expense.created_at;
+    const time = node('time', 'expense-time', dateLabel(expenseDate(expense)));
+    time.dateTime = expenseDate(expense);
     top.append(icon, time);
     const name = node('h3', 'expense-name', expense.item);
     name.title = expense.item;
     const bottom = node('div', 'expense-card-bottom');
     const categoryLabel = node('span', 'expense-category');
-    if (expense.is_potential_leak && expense.amount < 500) {
-      const indicator = node('span', 'leak-indicator');
-      indicator.title = 'Small discretionary purchase';
-      categoryLabel.append(indicator);
-    }
     categoryLabel.append(document.createTextNode(category.name));
     const amountLabel = node('p', 'expense-amount', money(expense.amount));
     amountLabel.classList.toggle('is-long', amountLabel.textContent.length > 9);
     bottom.append(categoryLabel, amountLabel);
     card.append(top, name, bottom, node('p', 'expense-payment', paymentLabel(expense.payment_method)));
+    const actions = node('div', 'expense-actions');
+    for (const [kind, label] of [['edit', 'Edit'], ['delete', 'Delete']]) {
+      const control = node('button', `expense-action expense-action-${kind}`, label);
+      control.type = 'button';
+      control.setAttribute('aria-label', `${label} ${expense.item}`);
+      control.addEventListener('click', () => manager.open(expense, kind));
+      actions.append(control);
+    }
+    card.append(actions);
     container.append(card);
   }
 }
@@ -93,30 +100,20 @@ function renderAnalytics(analytics) {
   $('#total-spent').textContent = money(analytics.total_spent);
   $('#total-spent').classList.toggle('is-long', money(analytics.total_spent).length > 9);
   $('#expense-count').textContent = plural(analytics.expense_count, 'expense');
-  $('#leak-total').textContent = money(analytics.daily_leak_velocity);
-  $('#leak-total').classList.toggle('is-long', money(analytics.daily_leak_velocity).length > 9);
-  $('#leak-count').textContent = analytics.leak_count ? `${plural(analytics.leak_count, 'small discretionary spend')}` : 'No small discretionary spends yet';
-  $('#leak-share').textContent = `${Math.round(analytics.leak_share_percent)}%`;
-  $('#share-fill').style.width = `${Math.min(100, Math.max(0, analytics.leak_share_percent))}%`;
-  const warnings = analytics.warnings;
-  const first = warnings[0];
-  $('#insight-card').classList.toggle('has-warning', Boolean(first));
+  const largest = [...(analytics.expenses || [])].sort((a, b) => b.amount - a.amount)[0];
+  $('#leak-total').textContent = largest ? money(largest.amount) : '—';
+  $('#leak-total').classList.toggle('is-long', largest && money(largest.amount).length > 9);
+  $('#leak-count').textContent = largest ? largest.item : 'No entries for today yet';
+  const insight = calculateInsights(analytics, { max: 1 });
+  const first = insight.observations[0];
   $('#insight-symbol').textContent = first ? '↗' : '◎';
-  $('#insight-label').textContent = first ? 'A LITTLE LEAK, SPOTTED' : 'THE LITTLE THINGS ADD UP';
-  if (first) {
-    $('#insight-title').textContent = 'Small spends. Sneaky total.';
-    const category = categoryMeta[first.category]?.name.toLowerCase() || first.category;
-    $('#insight-description').textContent = `${first.count} little ${category} purchases today. That's ${money(first.total)} in spends under ₹500.${warnings.length > 1 ? ` ${warnings.length - 1} more ${warnings.length === 2 ? 'category has' : 'categories have'} a repeat pattern, too.` : ' Worth a moment of attention.'}`;
-    $('#insight-detail-label').textContent = 'Your small-spend share';
-  } else if (analytics.expense_count > 0) {
-    $('#insight-title').textContent = 'A clearer picture, already.';
-    $('#insight-description').textContent = 'No repeat spending pattern today. Keep logging the little things — awareness is a good place to start.';
-    $('#insight-detail-label').textContent = 'Your small-spend share';
-  } else {
-    $('#insight-title').textContent = 'Room to notice. Room to grow.';
-    $('#insight-description').textContent = "As you log your day, we'll help you spot the small spends that keep coming back.";
-    $('#insight-detail-label').textContent = 'A little perspective';
-  }
+  $('#insight-label').textContent = 'WHAT CHANGED?';
+  $('#insight-title').textContent = first?.title || 'A little more history.';
+  $('#insight-description').textContent = first?.text || insight.emptyMessage;
+  if ($('#insight-detail-label')) $('#insight-detail-label').textContent = 'Based on your logged expenses';
+  if ($('#leak-share')) $('#leak-share').textContent = '';
+  if ($('#share-fill')) $('#share-fill').parentElement.hidden = true;
+  if ($('#insight-caption')) $('#insight-caption').textContent = 'Open Reports for weekly and monthly patterns.';
   const categoryTotals = new Map();
   for (const group of analytics.groups) categoryTotals.set(group.category, (categoryTotals.get(group.category) || 0) + group.total);
   const list = $('#category-list');
@@ -136,18 +133,7 @@ function renderAnalytics(analytics) {
     row.append(head, track);
     list.append(row);
   }
-  const chart = $('#hour-chart');
-  chart.replaceChildren();
-  const max = Math.max(1, ...analytics.hourly.map((hour) => hour.total));
-  for (const hour of analytics.hourly) {
-    const bar = node('div', 'hour-bar');
-    bar.style.setProperty('--total-height', `${hour.total / max * 100}%`);
-    bar.style.setProperty('--leak-height', `${hour.total ? hour.leak_total / hour.total * 100 : 0}%`);
-    bar.title = `${String(hour.hour).padStart(2, '0')}:00 IST · ${money(hour.total)} total · ${money(hour.leak_total)} discretionary under ₹500`;
-    bar.append(node('div', 'hour-leak'));
-    chart.append(bar);
-  }
-  chart.setAttribute('aria-label', `Hourly spending for ${analytics.date} in India Standard Time. ${money(analytics.total_spent)} total; ${money(analytics.daily_leak_velocity)} in small discretionary purchases.`);
+
 }
 
 async function refresh() {
@@ -155,14 +141,12 @@ async function refresh() {
   const version = ++refreshVersion;
   $('#dashboard').setAttribute('aria-busy', 'true');
   try {
-    const [expenses, analytics] = demo
-      ? [demo.getExpenses(), demo.getAnalytics()]
-      : await Promise.all([api('/api/expenses'), api('/api/analytics')]);
+    const report = demo
+      ? buildDemoReport(demo.getAllExpenses().expenses, 'day', todayInIndia())
+      : await api('/api/reports?period=day');
     if (version !== refreshVersion) return true;
-    // Two independent requests can straddle midnight; don't show mixed-day totals.
-    if (expenses.date !== analytics.date) throw new Error('A new day just started. Refresh to see today.');
-    renderExpenses(expenses.expenses);
-    renderAnalytics(analytics);
+    renderExpenses(report.expenses);
+    renderAnalytics(report);
     $('#connection-state').hidden = true;
     return true;
   } catch (error) {
@@ -179,6 +163,30 @@ async function refresh() {
   }
 }
 
+const feedback = node('p', 'journal-feedback');
+feedback.setAttribute('role', 'status');
+feedback.setAttribute('aria-live', 'polite');
+feedback.hidden = true;
+$('main').prepend(feedback);
+
+function notifyJournal(message, error = false) {
+  feedback.hidden = !message;
+  feedback.textContent = message;
+  feedback.classList.toggle('error', error);
+}
+const manager = createExpenseManager({
+  mutate: (method, payload) => demo
+    ? (method === 'PATCH' ? demo.updateExpense(payload) : demo.deleteExpense(payload))
+    : api('/api/expenses', { method, body: JSON.stringify(payload) }),
+  onChanged: async ({ kind }) => {
+    const okay = activeView === 'reports' ? await reportsView.refresh() : await refresh();
+    notifyJournal(kind === 'refresh' ? 'Entries refreshed. Review the latest details before trying again.'
+      : `${kind === 'delete' ? 'Expense deleted' : 'Expense updated'}.${okay ? ' Your totals are up to date.' : ' Refresh to load the updated totals.'}`, !okay);
+  },
+  onUnauthorized: expireSession,
+  onOpenChange: open => { isSaving = open; },
+});
+
 const composer = createExpenseComposer({
   dialog: $('#expense-dialog'),
   preview: async (text) => demo ? demo.previewExpense(text) : (await api('/api/previewExpense', {
@@ -187,11 +195,17 @@ const composer = createExpenseComposer({
   save: async (draftId, choices, key) => demo ? demo.saveExpense(draftId, choices, key) : (await api('/api/parseExpense', {
     method: 'POST', body: JSON.stringify({ draft_id: draftId, ...choices }), headers: { 'Idempotency-Key': key },
   })).expense,
-  onSaved: async (expense, method) => {
+  onDismissUncertain: async () => {
+    const loaded = await refresh();
+    setStatus(loaded ? 'Your journal was refreshed. The save may have completed; check Today or Reports before entering the expense again.' : 'The save may have completed. Refresh and check your journal before entering it again.', !loaded);
+  },
+  onSaved: async (expense) => {
+    const savedSession = sessionVersion;
     $('#expense-input').value = '';
     const refreshed = await refresh();
+    if (savedSession !== sessionVersion || (!user && !demo)) return;
     setStatus(refreshed
-      ? `${expense.item} · ${money(expense.amount)} · ${paymentLabel(method)} added${demo ? ' to your sample day' : ''}.`
+      ? `${expense.item} · ${money(expense.amount)} · ${paymentLabel(expense.payment_method)} added for ${dateLabel(expenseDate(expense))}${demo ? ' in this sample journal' : ''}.${expenseDate(expense) !== todayInIndia() ? ' Find it in Reports.' : ''}`
       : 'Your expense was saved. Refresh the journal to see the updated totals.');
   },
   onUnauthorized: expireSession,
@@ -214,11 +228,6 @@ $('#expense-form').addEventListener('submit', (event) => {
   composer.open(text);
 });
 
-$('#velocity-info').addEventListener('click', () => {
-  const explanation = $('#velocity-explanation');
-  explanation.hidden = !explanation.hidden;
-  $('#velocity-info').setAttribute('aria-expanded', String(!explanation.hidden));
-});
 $('#retry-button').addEventListener('click', refresh);
 
 async function enterDemo() {
@@ -248,6 +257,8 @@ $('#exit-demo').addEventListener('click', async () => {
 function clearFinancialState() {
   refreshVersion++;
   composer.reset();
+  manager.reset();
+  notifyJournal('');
   $('#expense-input').value = '';
   $('#connection-state').hidden = true;
   renderExpenses([]);
@@ -320,14 +331,15 @@ async function loadSession() {
 }
 
 async function openView(view) {
-  if (!user && !demo) return;
+  if (isSaving || (!user && !demo)) return;
+  notifyJournal('');
   activeView = view;
   renderAccount();
   if (view === 'today') { await refresh(); return; }
   try {
     if (!reportsLoading) reportsLoading = import('./reports.js');
     const { createReportsView } = await reportsLoading;
-    if (!reportsView) reportsView = createReportsView({ root: $('#reports-view'), request: api, getDemo: () => demo, onUnauthorized: expireSession });
+    if (!reportsView) reportsView = createReportsView({ root: $('#reports-view'), request: api, getDemo: () => demo, onUnauthorized: expireSession, onEdit: expense => manager.open(expense, 'edit'), onDelete: expense => manager.open(expense, 'delete') });
     if (activeView === 'reports' && (user || demo)) await reportsView.refresh();
   } catch {
     reportsLoading = null;
@@ -337,6 +349,7 @@ async function openView(view) {
 
 $('#nav-today').addEventListener('click', () => openView('today'));
 $('#nav-reports').addEventListener('click', () => openView('reports'));
+$('#view-reports-button')?.addEventListener('click', () => openView('reports'));
 $('#google-signin').addEventListener('click', async () => {
   if (!authConfigured) {
     $('#google-signin').disabled = true;

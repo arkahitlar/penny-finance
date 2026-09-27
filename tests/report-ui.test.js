@@ -6,7 +6,7 @@ function expense(item, amount, created_at, is_potential_leak = true, category = 
   return { id: item, item, amount, created_at, is_potential_leak, category };
 }
 
-test('demo reports use IST days, integer paise, and a strict under-500 leak threshold', () => {
+test('legacy demo dates use IST days and integer paise', () => {
   const rows = [
     expense('Prior day', 70, '2026-09-23T18:29:59Z'),
     expense('At midnight', 0.1, '2026-09-23T18:30:00Z'),
@@ -16,10 +16,8 @@ test('demo reports use IST days, integer paise, and a strict under-500 leak thre
   ];
   const result = buildDemoReport(rows, 'day', '2026-09-24', new Date('2026-09-24T06:00:00Z'));
   assert.equal(result.total_spent, 600.3);
-  assert.equal(result.leak_total, 0.3);
-  assert.equal(result.leak_count, 2);
   assert.equal(result.expense_count, 4);
-  assert.equal(result.daily_leak_velocity, 0.3);
+  assert.equal(Object.hasOwn(result, 'leak_total'), false);
   assert.equal(result.comparison.total_spent, 70);
   assert.equal(result.series[0].date, '2026-09-24');
   assert.equal(result.series[0].total, 600.3);
@@ -38,10 +36,11 @@ test('weekly reports start Monday, include zero-spend days, and compare matched 
   assert.equal(result.series.length, 4);
   assert.equal(result.series[0].total, 0);
   assert.equal(result.average_daily_spend, 100);
-  assert.equal(result.daily_leak_velocity, 100);
   assert.equal(result.comparison.end_date, '2026-09-17');
   assert.equal(result.comparison.total_spent, 100);
   assert.equal(result.comparison.change_percent, 300);
+  assert.deepEqual(result.comparison.groups, [{ category: 'food_drink', count: 1, total: 100 }]);
+  assert.deepEqual(result.comparison.current_groups, [{ category: 'food_drink', count: 1, total: 400 }]);
 });
 
 test('monthly comparison caps both sides to the previous shorter month', () => {
@@ -57,6 +56,7 @@ test('monthly comparison caps both sides to the previous shorter month', () => {
   assert.equal(result.comparison.end_date, '2026-02-28');
   assert.equal(result.comparison.current_total_spent, 280);
   assert.equal(result.comparison.change_percent, 100);
+  assert.equal(result.comparison.current_groups[0].total, 280);
 });
 
 test('calendar arithmetic handles leap years and year boundaries', () => {
@@ -87,7 +87,9 @@ test('CSV escapes formula-like names, double quotes, embedded line breaks, and I
   assert.ok(csv.includes('"\'=HYPERLINK(""https://invalid.example"")"'));
   assert.ok(csv.includes('" Coffee, ""large""\nwith milk"'));
   assert.ok(csv.includes('"2026-09-24 01:30:00"'));
-  assert.ok(csv.includes('"80.00","Yes"'));
+  assert.ok(csv.includes('"2026-09-24","2026-09-24 01:30:00"'));
+  assert.ok(csv.includes('"Expense date (IST)","Recorded at (IST)"'));
+  assert.ok(!csv.includes('discretionary'));
   assert.ok(csv.includes('"Payment method"'));
   assert.ok(csv.includes('"Credit card","80.00"'));
   assert.ok(csv.includes('"Not specified","20.00"'));
@@ -106,5 +108,46 @@ test('demo payment filter also scopes previous-period comparisons and exports', 
   assert.equal(result.total_spent, 80);
   assert.equal(result.comparison.total_spent, 40);
   assert.equal(result.comparison.change_percent, 100);
+  assert.equal(result.comparison.groups[0].total, 40);
+  assert.equal(result.comparison.current_groups[0].total, 80);
   assert.ok(!reportCsv(result).includes('Card'));
+});
+
+test('backdated expenses affect their expense date instead of their recording date', () => {
+  const rows = [
+    { ...expense('Yesterday entered today', 80, '2026-09-24T10:00:00Z'), expense_date: '2026-09-23', payment_method: 'cash' },
+    { ...expense('Today entered today', 200, '2026-09-24T06:00:00Z'), expense_date: '2026-09-24', payment_method: 'credit_card' },
+  ];
+  const today = buildDemoReport(rows, 'day', '2026-09-24', new Date('2026-09-24T10:00:00Z'));
+  assert.equal(today.total_spent, 200);
+  assert.equal(today.comparison.total_spent, 80);
+  const yesterday = buildDemoReport(rows, 'day', '2026-09-23', new Date('2026-09-24T10:00:00Z'));
+  assert.equal(yesterday.total_spent, 80);
+  assert.equal(yesterday.series[0].total, 80);
+  assert.match(reportCsv(yesterday), /"2026-09-23","2026-09-24 15:30:00"/);
+});
+
+test('demo report recomputes both comparison windows after edit and deletion', () => {
+  const old = { ...expense('Coffee', 80, '2026-09-24T10:00:00Z'), expense_date: '2026-09-24', payment_method: 'cash' };
+  const previous = { ...expense('Earlier coffee', 40, '2026-09-23T10:00:00Z'), expense_date: '2026-09-23', payment_method: 'cash' };
+  const now = new Date('2026-09-24T10:00:00Z');
+  const edited = { ...old, amount: 120, category: 'shopping', expense_date: '2026-09-23', payment_method: 'credit_card' };
+  const all = buildDemoReport([edited, previous], 'day', '2026-09-24', now);
+  assert.equal(all.total_spent, 0);
+  assert.equal(all.comparison.total_spent, 160);
+  assert.equal(all.comparison.current_groups.length, 0);
+  const card = buildDemoReport([edited, previous], 'day', '2026-09-24', now, 'credit_card');
+  assert.deepEqual(card.comparison.groups, [{ category: 'shopping', count: 1, total: 120 }]);
+  const deleted = buildDemoReport([previous], 'day', '2026-09-23', now);
+  assert.equal(deleted.total_spent, 40);
+  assert.equal(deleted.expense_count, 1);
+});
+
+test('future demo window is empty without negative day count or future expenses', () => {
+  const row = { ...expense('Future entry', 100, '2026-09-24T10:00:00Z'), expense_date: '2026-09-25' };
+  const report = buildDemoReport([row], 'day', '2026-09-25', new Date('2026-09-24T10:00:00Z'));
+  assert.equal(report.days_elapsed, 0);
+  assert.equal(report.expense_count, 0);
+  assert.deepEqual(report.series, []);
+  assert.deepEqual(report.comparison.current_groups, []);
 });

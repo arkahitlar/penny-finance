@@ -1,4 +1,6 @@
 // An explicitly selected, in-memory sample. Never sent to the API or persisted.
+import { validateEdit } from './expenseManager.js';
+import { expenseDate, validExpenseDate } from './expenseDates.js';
 import { inferCategory, potentialLeakForCategory } from './classifyExpense.js';
 
 const INDIA_OFFSET = 330 * 60 * 1000;
@@ -7,9 +9,10 @@ const CATEGORIES = new Set(['food_drink', 'shopping', 'entertainment', 'transpor
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function dateKey() { return new Date(Date.now() + INDIA_OFFSET).toISOString().slice(0, 10); }
 
-function demoError(message, code) {
+function demoError(message, code, status = 409) {
   const error = new Error(message);
   error.code = code;
+  error.status = status;
   return error;
 }
 
@@ -67,6 +70,7 @@ export function createDemo() {
   const drafts = new Map();
   const savedDrafts = new Map();
   const savedKeys = new Map();
+  const deleted = new Set();
   let expenses = [
     ['Filter coffee', 80, 'food_drink', true, 'cash', '09:15'],
     ['Auto to work', 120, 'transport', false, 'cash', '09:40'],
@@ -74,13 +78,14 @@ export function createDemo() {
     ['Weekly groceries', 640, 'groceries', false, 'credit_card', '14:05'],
     ['Afternoon chai', 40, 'food_drink', true, 'cash', '16:20'],
     ['A little snack break', 95, 'food_drink', true, 'cash', '17:45'],
-  ].map(([item, amount, category, is_potential_leak, payment_method, time]) => ({ id: crypto.randomUUID(), item, amount, category, is_potential_leak, payment_method, created_at: new Date(`${day}T${time}:00+05:30`).toISOString() }));
+  ].map(([item, amount, category, is_potential_leak, payment_method, time]) => ({ id: crypto.randomUUID(), item, amount, category, is_potential_leak, payment_method, expense_date: day, revision: 1, created_at: new Date(`${day}T${time}:00+05:30`).toISOString() }));
   function rollDay() {
-    if (day !== dateKey()) { day = dateKey(); expenses = []; drafts.clear(); savedDrafts.clear(); savedKeys.clear(); }
+    if (day !== dateKey()) day = dateKey();
     for (const [id, draft] of drafts) if (Date.parse(draft.expires_at) <= Date.now()) drafts.delete(id);
   }
   return {
-    getExpenses() { rollDay(); return { date: day, timezone: 'Asia/Kolkata', expenses: expenses.map((expense) => ({ ...expense })).sort((a, b) => b.created_at.localeCompare(a.created_at)) }; },
+    getExpenses() { rollDay(); return { date: day, timezone: 'Asia/Kolkata', expenses: expenses.filter(expense => expenseDate(expense) === day).map((expense) => ({ ...expense })).sort((a, b) => b.created_at.localeCompare(a.created_at)) }; },
+    getAllExpenses() { rollDay(); return { date: day, timezone: 'Asia/Kolkata', expenses: expenses.map(expense => ({ ...expense })) }; },
     getAnalytics() {
       rollDay();
       const result = emptyAnalytics();
@@ -88,7 +93,7 @@ export function createDemo() {
       const warningGroups = new Map();
       let totalPaise = 0;
       let leakPaise = 0;
-      for (const expense of expenses) {
+      for (const expense of expenses.filter(expense => expenseDate(expense) === day)) {
         const paise = Math.round(expense.amount * 100);
         const leak = expense.is_potential_leak && paise < 50000;
         const key = `${expense.category}:${expense.is_potential_leak}`;
@@ -120,33 +125,57 @@ export function createDemo() {
       drafts.set(draft.id, draft);
       return { ...draft };
     },
-    saveExpense(draftId, { payment_method, category } = {}, idempotencyKey) {
+    saveExpense(draftId, { payment_method, category, expense_date = savedDrafts.get(draftId)?.expense_date ?? dateKey() } = {}, idempotencyKey) {
       rollDay();
       if (!['cash', 'credit_card'].includes(payment_method)) throw new Error('Choose cash or credit card before adding this expense.');
+      if (!validExpenseDate(expense_date)) throw demoError('Choose a real date through today.', 'INVALID_EXPENSE_DATE', 400);
       if (!CATEGORIES.has(category)) throw new Error('Choose a valid expense category.');
       if (typeof idempotencyKey !== 'string' || !UUID.test(idempotencyKey)) throw new Error('A valid save request is required. Please try again.');
       const key = idempotencyKey.toLowerCase();
-      const sameChoices = (saved) => saved.payment_method === payment_method && saved.category === category;
+      const sameChoices = (saved) => saved.payment_method === payment_method && saved.category === category && saved.expense_date === expense_date;
       const previousKey = savedKeys.get(key);
       if (previousKey && (previousKey.draftId !== draftId || !sameChoices(previousKey.expense))) {
         throw demoError('This save request was already used for another expense.', 'IDEMPOTENCY_CONFLICT');
       }
       const existing = savedDrafts.get(draftId);
+      if (existing && deleted.has(existing.id)) throw demoError('This expense was deleted.', 'EXPENSE_DELETED', 410);
       if (existing) {
         if (!sameChoices(existing)) throw demoError('This expense has already been added with different choices.', 'DRAFT_ALREADY_SAVED');
         savedKeys.set(key, { draftId, expense: existing });
-        return { ...existing };
+        return { ...expenses.find(expense => expense.id === existing.id) };
       }
       const draft = drafts.get(draftId);
       if (!draft) throw demoError('This preview expired. Enter the expense again.', 'DRAFT_EXPIRED');
       const expense = { id: crypto.randomUUID(), item: draft.item, amount: draft.amount, category,
-        is_potential_leak: potentialLeakForCategory(category, draft.category, draft.is_potential_leak), payment_method,
+        is_potential_leak: potentialLeakForCategory(category, draft.category, draft.is_potential_leak), payment_method, expense_date, revision: 1,
         created_at: new Date().toISOString() };
       expenses.push(expense);
       drafts.delete(draftId);
       savedDrafts.set(draftId, expense);
       savedKeys.set(key, { draftId, expense });
       return { ...expense };
+    },
+    updateExpense(input) {
+      rollDay();
+      const index = expenses.findIndex(expense => expense.id === input.id);
+      if (index < 0) throw demoError('This expense is no longer available.', 'EXPENSE_NOT_FOUND', 404);
+      const current = expenses[index];
+      if (current.revision !== input.revision) throw demoError('This expense changed. Refresh to edit the latest version.', 'EXPENSE_CONFLICT');
+      const fields = validateEdit({ ...input, amount: String(input.amount) });
+      if (fields.payment_method === 'unspecified' && current.payment_method !== 'unspecified') throw demoError('Choose cash or credit card.', 'INVALID_PAYMENT_METHOD', 400);
+      const updated = { ...current, ...fields, revision: current.revision + 1,
+        is_potential_leak: potentialLeakForCategory(fields.category, current.category, current.is_potential_leak) };
+      expenses[index] = updated;
+      return { expense: { ...updated } };
+    },
+    deleteExpense({ id, revision }) {
+      rollDay();
+      const current = expenses.find(expense => expense.id === id);
+      if (!current) throw demoError('This expense is no longer available.', 'EXPENSE_NOT_FOUND', 404);
+      if (current.revision !== revision) throw demoError('This expense changed. Refresh to delete the latest version.', 'EXPENSE_CONFLICT');
+      deleted.add(id);
+      expenses = expenses.filter(expense => expense.id !== id);
+      return { deleted: true };
     },
   };
 }

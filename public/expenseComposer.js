@@ -1,3 +1,4 @@
+import { todayInIndia, yesterdayInIndia, validExpenseDate } from './expenseDates.js';
 const CATEGORY_LABELS = {
   food_drink: 'Food & drink', transport: 'Transport', groceries: 'Groceries',
   shopping: 'Shopping', entertainment: 'Entertainment', bills: 'Bills & utilities',
@@ -6,7 +7,7 @@ const CATEGORY_LABELS = {
 const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 /** A preview is never a saved expense. Only the confirmation button writes it. */
-export function createExpenseComposer({ dialog, preview, save, onSaved, onUnauthorized, onOpenChange }) {
+export function createExpenseComposer({ dialog, preview, save, onSaved, onUnauthorized, onOpenChange, onDismissUncertain }) {
   const find = (selector) => dialog.querySelector(selector);
   const categoryInputs = [...dialog.querySelectorAll('input[name="review-category"]')];
   const paymentInputs = [...dialog.querySelectorAll('input[name="payment-method"]')];
@@ -26,7 +27,11 @@ export function createExpenseComposer({ dialog, preview, save, onSaved, onUnauth
     find('#review-loading').hidden = !parsing;
     find('#review-categories').disabled = !ready || saving || Boolean(entry?.uncertain);
     find('#review-payment').disabled = !ready || saving || Boolean(entry?.uncertain);
-    find('#review-save').disabled = !ready || !entry.payment || saving || parsing;
+    find('#review-date').disabled = !ready || saving || Boolean(entry?.uncertain);
+    find('#review-date').max = todayInIndia();
+    find('#review-date').value = entry?.date || todayInIndia();
+    for (const id of ['#review-today', '#review-yesterday']) find(id).disabled = !ready || saving || Boolean(entry?.uncertain);
+    find('#review-save').disabled = !ready || !entry.payment || !validExpenseDate(entry.date) || saving || parsing;
     find('#review-save').textContent = saving ? 'Saving…' : entry?.uncertain ? 'Retry save' : 'Save expense';
     find('#review-cancel').disabled = saving;
     find('#review-close').disabled = saving;
@@ -75,6 +80,7 @@ export function createExpenseComposer({ dialog, preview, save, onSaved, onUnauth
     version++;
     parsing = false;
     onOpenChange(false);
+    if (entry?.uncertain) onDismissUncertain?.();
   });
 
   for (const input of categoryInputs) input.addEventListener('change', () => {
@@ -91,15 +97,26 @@ export function createExpenseComposer({ dialog, preview, save, onSaved, onUnauth
     update();
   });
 
+  function chooseDate(value) {
+    if (!entry || saving || entry.uncertain) return;
+    entry.date = value;
+    entry.key = crypto.randomUUID();
+    status(validExpenseDate(value) ? 'This expense will count toward the selected date.' : 'Choose a real date from 1900 through today.', !validExpenseDate(value));
+    update();
+  }
+  find('#review-date').addEventListener('change', event => chooseDate(event.target.value));
+  find('#review-today').addEventListener('click', () => chooseDate(todayInIndia()));
+  find('#review-yesterday').addEventListener('click', () => chooseDate(yesterdayInIndia()));
+
   find('#review-form').addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (saving || parsing || !entry?.draft || !entry.payment) return;
+    if (saving || parsing || !entry?.draft || !entry.payment || !validExpenseDate(entry.date)) return;
     saving = true;
     const current = ++version;
     status('Saving your expense…');
     update();
     try {
-      const expense = await save(entry.draft.id, { payment_method: entry.payment, category: entry.category }, entry.key);
+      const expense = await save(entry.draft.id, { payment_method: entry.payment, category: entry.category, expense_date: entry.date }, entry.key);
       if (current !== version) return;
       const method = entry.payment;
       saving = false;
@@ -112,13 +129,13 @@ export function createExpenseComposer({ dialog, preview, save, onSaved, onUnauth
       // Keep the exact confirmed choices/key after an uncertain network outcome.
       // A retry asks the server for the same draft, so it cannot add a second expense.
       entry.uncertain = !error.status || error.status >= 500;
-      if (['DRAFT_EXPIRED', 'EXPENSE_DRAFT_EXPIRED', 'DRAFT_NOT_FOUND'].includes(error.code)) {
+      if (['DRAFT_EXPIRED', 'EXPENSE_DRAFT_EXPIRED', 'DRAFT_NOT_FOUND', 'EXPENSE_DELETED'].includes(error.code)) {
         entry.draft = null;
         entry.uncertain = false;
         entry.key = crypto.randomUUID();
       }
       status(entry.uncertain
-        ? 'We couldn’t confirm the save. Retry safely with the same payment and category.'
+        ? 'We couldn’t confirm the save. Retry safely with the same date, payment, and category.'
         : error.message || 'Couldn’t save this expense. Please try again.', true);
     } finally {
       if (current === version) { saving = false; update(); }
@@ -130,7 +147,7 @@ export function createExpenseComposer({ dialog, preview, save, onSaved, onUnauth
       if (dialog.open) return;
       const reusable = entry?.text === text && entry.draft &&
         (entry.uncertain || new Date(entry.draft.expires_at).getTime() > Date.now());
-      if (!reusable) entry = { text, draft: null, category: null, payment: null, key: crypto.randomUUID(), uncertain: false };
+      if (!reusable) entry = { text, draft: null, category: null, payment: null, date: todayInIndia(), key: crypto.randomUUID(), uncertain: false };
       find('#review-original').textContent = text;
       status(entry.uncertain ? 'Retry the previous save with the same choices.' : '');
       dialog.showModal();

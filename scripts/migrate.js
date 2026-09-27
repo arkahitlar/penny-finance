@@ -28,14 +28,21 @@ export async function migrateDatabase(client) {
       await transaction.executeMultiple(expenseSchema);
       await transaction.execute({
         sql: `INSERT INTO expenses
-          (id, user_id, item, amount_paise, category, is_potential_leak, created_at, idempotency_key, request_hash)
-          SELECT id, ?, item, amount_paise, category, is_potential_leak, created_at, idempotency_key, request_hash
+          (id, user_id, item, amount_paise, category, is_potential_leak, created_at, expense_date, idempotency_key, request_hash)
+          SELECT id, ?, item, amount_paise, category, is_potential_leak, created_at, date(created_at, '+330 minutes'), idempotency_key, request_hash
           FROM expenses_legacy_unclaimed`,
         args: [LEGACY_USER_ID],
       });
       await transaction.execute('DROP TABLE expenses_legacy_unclaimed');
     } else {
       if (columns.rows.length) {
+        if (!columns.rows.some((row) => row.name === 'expense_date')) {
+          await transaction.execute("ALTER TABLE expenses ADD COLUMN expense_date TEXT");
+          await transaction.execute("UPDATE expenses SET expense_date = date(created_at, '+330 minutes') WHERE expense_date IS NULL");
+        }
+        if (!columns.rows.some((row) => row.name === 'revision')) {
+          await transaction.execute('ALTER TABLE expenses ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1)');
+        }
         if (!columns.rows.some((row) => row.name === 'payment_method')) {
           await transaction.execute("ALTER TABLE expenses ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'unspecified' CHECK (payment_method IN ('cash', 'credit_card', 'unspecified'))");
         }
@@ -45,6 +52,9 @@ export async function migrateDatabase(client) {
       }
       await transaction.executeMultiple(expenseSchema);
     }
+    await transaction.execute("UPDATE expenses SET expense_date = date(created_at, '+330 minutes') WHERE expense_date IS NULL OR expense_date = ''");
+    const invalidDates = await transaction.execute("SELECT id FROM expenses WHERE expense_date IS NULL OR expense_date < '1900-01-01' LIMIT 1");
+    if (invalidDates.rows.length) throw new Error('Database contains an invalid historical expense date.');
     const violations = await transaction.execute('PRAGMA foreign_key_check');
     if (violations.rows.length) throw new Error('Database contains invalid user references.');
     await transaction.commit();

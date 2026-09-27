@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f7f9">
-  <meta name="description" content="A little awareness for your everyday spending. Log an expense in your own words and spot the small spends that add up.">
-  <title>Penny — A little more mindful</title>
+  <meta name="theme-color" content="#f6f3e9">
+  <meta name="description" content="Your everyday money, a little clearer. Log, edit, and explore your spending in a private journal.">
+  <title>Penny — Make sense of your spending</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/account.css">
@@ -27,30 +27,30 @@
     <main>
       <section class="auth-view" id="auth-view" aria-labelledby="welcome-title">
         <div class="auth-intro">
-          <span class="welcome-mark" aria-hidden="true">✳</span>
+          <span class="welcome-mark" aria-hidden="true">₹<i>✳</i></span>
           <p class="eyebrow">YOUR MONEY, A LITTLE CLEARER</p>
-          <h1 id="welcome-title">Small spends.<br>A bigger picture.</h1>
-          <p class="welcome-copy">A coffee here. A quick bite there.<br>Notice what adds up, without overthinking it.</p>
-          <div class="welcome-features"><span>One simple input</span><span>Thoughtful insights</span><span>Your own private journal</span></div>
+          <h1 id="welcome-title">Life happens.<br><span>Make it count.</span></h1>
+          <p class="welcome-copy">The everyday, the unexpected, the little treats.<br>Give your spending a place to make sense.</p>
+          <div class="welcome-features"><span>Add it in your own words</span><span>See what changes over time</span><span>A private space for your money</span></div>
         </div>
         <div class="card signin-card">
-          <div class="signin-heading"><img src="/favicon.svg" width="42" height="42" alt=""><span class="eyebrow">A FRESH PERSPECTIVE</span></div>
-          <h2>Make room for clarity.</h2>
+          <div class="signin-heading"><img src="/favicon.svg" width="42" height="42" alt=""><span class="eyebrow">A FRESH START</span></div>
+          <h2>Meet your money journal.</h2>
           <p>Sign in to save your expenses and get a clearer view of each day, week, and month.</p>
           <button type="button" class="google-button" id="google-signin" disabled><svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#4285F4" d="M43.61 20.46H42V20H24v8h11.3A12 12 0 1 1 31.57 14l5.66-5.66A20 20 0 1 0 44 24c0-1.18-.1-2.37-.39-3.54Z"/><path fill="#34A853" d="M24 44a19.9 19.9 0 0 0 13.42-5.16l-6.19-5.24A12 12 0 0 1 12.67 29l-6.56 5.05A20 20 0 0 0 24 44Z"/><path fill="#FBBC05" d="M6.11 34.05 12.67 29a12 12 0 0 1 0-10L6.11 13.95a20 20 0 0 0 0 20.1Z"/><path fill="#EA4335" d="M24 4A20 20 0 0 0 6.11 13.95L12.67 19A12 12 0 0 1 31.57 14l5.66-5.66A19.93 19.93 0 0 0 24 4Z"/></svg>Continue with Google</button>
           <p class="auth-status" id="auth-status" role="status">Checking your session…</p>
           <div class="signin-divider"><span>or take a look around</span></div>
           <button type="button" class="preview-button" id="welcome-demo">Explore a sample journal <span aria-hidden="true">↗</span></button>
-          <p class="signin-footnote">No bank connection. No spreadsheets.<br>Just you, your words, and a little awareness.</p>
+          <p class="signin-footnote">Your journal, your pace.<br>No bank connection needed.</p>
         </div>
       </section>
       <div id="today-view" hidden>
       <section class="entry-section" aria-labelledby="page-title">
-        <div class="intro-row"><div><p class="eyebrow">A LITTLE AWARENESS GOES A LONG WAY</p><h1 id="page-title">A little more mindful.</h1></div><span class="currency-note">Made for your everyday <span>₹</span></span></div>
+        <div class="intro-row"><div><p class="eyebrow">YOUR EVERYDAY MONEY JOURNAL</p><h1 id="page-title">A clearer kind of everyday.</h1></div><span class="currency-note">Small habit.<br><strong>Big perspective.</strong></span></div>
         <form id="expense-form" novalidate>
           <label class="sr-only" for="expense-input">Describe an expense and its amount in rupees</label>
-          <div class="input-shell"><span class="input-spark" aria-hidden="true">✳</span><input id="expense-input" name="expense" type="text" maxlength="500" autocomplete="off" placeholder="had a dosa and coffee for 235" aria-describedby="input-help form-status" required><button class="submit-button" id="submit-button" type="submit" aria-label="Add expense"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div>
-          <div class="input-meta"><p id="input-help">Your words. Automatically organised.</p><span class="enter-hint">Press <kbd>↵ Enter</kbd> to review</span></div>
+          <div class="input-shell"><span class="input-spark" aria-hidden="true">✳</span><input id="expense-input" name="expense" type="text" maxlength="500" autocomplete="off" placeholder="had a dosa and coffee for 235" aria-describedby="input-help form-status" required><button class="submit-button" id="submit-button" type="submit" aria-label="Review expense"><span class="submit-label">Review expense</span><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div>
+          <div class="input-meta"><p id="input-help">Describe it. Review it. Make it yours.</p><span class="enter-hint">Press <kbd>↵ Enter</kbd> to review</span></div>
           <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
         </form>
       </section>
@@ -60,34 +60,34 @@
         <div class="main-column">
           <div class="stats-grid">
             <article class="card total-card"><div class="card-label"><span>Spent today</span><span class="mini-icon" aria-hidden="true">↗</span></div><p class="large-value" id="total-spent">₹0</p><div class="stat-bottom"><span id="expense-count">0 expenses</span><span class="day-pill">Just today</span></div></article>
-            <article class="card velocity-card"><div class="card-label"><span>Daily leak velocity</span><button type="button" class="info-button" id="velocity-info" aria-label="How daily leak velocity is calculated" aria-expanded="false" aria-controls="velocity-explanation">i</button></div><p class="large-value"><span id="leak-total">₹0</span><span class="value-unit">/ day</span></p><p class="stat-note" id="leak-count">No small discretionary spends yet</p><p class="metric-explanation" id="velocity-explanation" hidden>Today's discretionary purchases under ₹500, added together. This is the amount logged today, not a forecast or an hourly rate.</p></article>
+            <article class="card velocity-card"><div class="card-label"><span>Largest entry</span><span class="mini-icon" aria-hidden="true">↗</span></div><p class="large-value" id="leak-total">₹0</p><p class="stat-note" id="leak-count">Your largest entry will appear here.</p></article>
           </div>
 
-          <section class="expense-section" aria-labelledby="expense-title"><div class="section-heading"><h2 id="expense-title">Today's little things <span id="feed-count">0</span></h2><span class="section-aside">Latest first</span></div>
+          <section class="expense-section" aria-labelledby="expense-title"><div class="section-heading"><h2 id="expense-title">Today's entries <span id="feed-count">0</span></h2><span class="section-aside">Latest first</span></div>
             <div class="expense-grid" id="expense-list"></div>
             <div class="empty-state card" id="empty-state"><div class="empty-icon" aria-hidden="true">＋</div><h3>Every little thing starts somewhere.</h3><p>A coffee, an auto ride, lunch with a friend.<br>Add your first expense above.</p><button type="button" class="text-button" id="demo-button">Explore a sample day <span aria-hidden="true">↗</span></button></div>
           </section>
 
-          <article class="card rhythm-card"><div class="section-heading"><h2>Your spending rhythm</h2><span class="legend"><i></i> Small discretionary spends</span></div><div class="hour-chart" id="hour-chart" role="img" aria-label="Hourly spending today"></div><div class="chart-labels"><span>12 am</span><span>6 am</span><span>12 pm</span><span>6 pm</span><span>12 am</span></div></article>
+          <article class="card reports-prompt"><div class="reports-prompt-icon" aria-hidden="true">↗</div><div><p class="eyebrow">ZOOM OUT A LITTLE</p><h2>Your bigger picture</h2><p>Explore dates, payment methods, and patterns in Reports.</p></div><button type="button" id="view-reports-button" class="reports-prompt-button" aria-label="Open spending reports">Explore reports <span aria-hidden="true">↗</span></button></article>
         </div>
 
         <aside class="side-column" aria-label="Spending insights">
-          <article class="card insight-card" id="insight-card"><div class="insight-top"><span class="insight-symbol" id="insight-symbol" aria-hidden="true">◎</span><span class="eyebrow" id="insight-label">THE LITTLE THINGS ADD UP</span></div><h2 id="insight-title">Room to notice.<br>Room to grow.</h2><p id="insight-description">As you log your day, we'll help you spot the small spends that keep coming back.</p><div class="insight-divider"></div><div class="insight-detail"><span id="insight-detail-label">A little perspective</span><strong id="leak-share">0%</strong></div><p class="insight-caption" id="insight-caption">of today's spending is small discretionary purchases.</p><div class="share-track"><div id="share-fill"></div></div></article>
-          <article class="card breakdown-card"><div class="section-heading"><h2>Where it went</h2><span class="section-aside">Today</span></div><div id="category-list" class="category-list"><p class="muted-empty">Your categories will appear here.</p></div><div class="breakdown-foot"><span class="small-spark" aria-hidden="true">✳</span><span>Sorted for you. One less thing to do.</span></div></article>
-          <p class="quiet-note">Awareness over restriction.<br>One small step at a time.</p>
+          <article class="card insight-card" id="insight-card"><div class="insight-top"><span class="insight-symbol" id="insight-symbol" aria-hidden="true">◎</span><span class="eyebrow" id="insight-label">A LITTLE PERSPECTIVE</span></div><h2 id="insight-title">Your story, in the numbers.</h2><p id="insight-description">Log your expenses to see what changed and where your spending is going.</p><div class="insight-divider"></div><div class="insight-detail"><span id="insight-detail-label">A little perspective</span><strong id="leak-share">0%</strong></div><p class="insight-caption" id="insight-caption">Based on your logged expenses.</p><div class="share-track"><div id="share-fill"></div></div></article>
+          <article class="card breakdown-card"><div class="section-heading"><h2>Where it went</h2><span class="section-aside">Today</span></div><div id="category-list" class="category-list"><p class="muted-empty">Your categories will appear here.</p></div><div class="breakdown-foot"><span class="small-spark" aria-hidden="true">✳</span><span>A little order for your everyday.</span></div></article>
+          <p class="quiet-note">Your money. Your choices.<br>Just a little more clarity.</p>
         </aside>
       </section>
       </div>
       <section id="reports-view" hidden aria-label="Your spending reports"></section>
       <div class="demo-note" id="demo-note" hidden><span>You're exploring sample data. Demo entries stay in this tab and use a simple local parser.</span><button id="exit-demo" class="text-button" type="button">Back to my day ↗</button></div>
     </main>
-    <footer><span>penny for your thoughts. clarity for your spending.</span><span><a href="/privacy.html">Data & privacy</a><span class="footer-dot">·</span>INR <span class="footer-dot">·</span> Asia / Kolkata</span></footer>
+    <footer><span>a little clarity goes a long way.</span><span><a href="/privacy.html">Data & privacy</a><span class="footer-dot">·</span>INR <span class="footer-dot">·</span> Asia / Kolkata</span></footer>
   </div>
   <dialog class="expense-dialog" id="expense-dialog" aria-labelledby="review-title" aria-describedby="review-intro">
     <form id="review-form">
       <div class="review-top"><span class="eyebrow">ONE LAST DETAIL</span><button type="button" class="review-close" id="review-close" aria-label="Close expense preview" autofocus>×</button></div>
-      <h2 id="review-title">How did you pay?</h2>
-      <p class="review-intro" id="review-intro">Check the category, choose your payment method, and you're all set.</p>
+      <h2 id="review-title">Make it yours.</h2>
+      <p class="review-intro" id="review-intro">Check the category, choose a date, and tell us how you paid.</p>
       <p class="review-original" id="review-original"></p>
       <div class="review-loading" id="review-loading" role="status" hidden><span aria-hidden="true">✳</span><span>Finding the item, amount, and category…</span></div>
       <div id="review-details" hidden>
@@ -102,6 +102,7 @@
           <label class="category-choice"><input type="radio" name="review-category" value="health"><span>Health</span></label>
           <label class="category-choice"><input type="radio" name="review-category" value="other"><span>Other</span></label>
         </div></fieldset>
+        <div class="review-date-field"><div class="review-date-heading"><label for="review-date">Expense date</label><span>Missed a day? Add it here.</span></div><input type="date" id="review-date" min="1900-01-01" required><div class="date-shortcuts"><button type="button" id="review-today">Today</button><button type="button" id="review-yesterday">Yesterday</button></div></div>
         <fieldset id="review-payment"><legend>Paid with</legend><div class="payment-choices">
           <label class="payment-choice"><input type="radio" name="payment-method" value="credit_card"><span class="payment-option"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h4"/></svg>Credit card</span></label>
           <label class="payment-choice"><input type="radio" name="payment-method" value="cash"><span class="payment-option"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M5 9h2m10 6h2"/></svg>Cash</span></label>

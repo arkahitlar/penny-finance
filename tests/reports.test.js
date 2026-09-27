@@ -84,6 +84,8 @@ test('weekly reports compare matching elapsed days, zero-fill dates, and keep IS
   assert.deepEqual(report.comparison, {
     start_date: '2026-09-14', end_date: '2026-09-17', days_elapsed: 4,
     total_spent: 200, current_total_spent: 1000, change_percent: 400,
+    groups: [{ category: 'food_drink', count: 4, total: 200 }],
+    current_groups: [{ category: 'food_drink', count: 4, total: 1000 }],
   });
   const priorWeek = await makeService(repository).report('alice', { period: 'week', date: '2026-09-16' });
   assert.equal(priorWeek.days_elapsed, 7);
@@ -122,6 +124,8 @@ test('shorter previous months compare equal day counts without changing full rep
   assert.deepEqual(report.comparison, {
     start_date: '2026-02-01', end_date: '2026-02-28', days_elapsed: 28,
     total_spent: 50, current_total_spent: 100, change_percent: 100,
+    groups: [{ category: 'food_drink', count: 1, total: 50 }],
+    current_groups: [{ category: 'food_drink', count: 1, total: 100 }],
   });
 });
 
@@ -144,8 +148,8 @@ test('CSV quotes fields, doubles embedded quotes, and neutralizes spreadsheet fo
     item: '=1+1', category: 'food_drink', amount: 125.5, is_potential_leak: true,
     created_at: '2026-09-23T18:30:00.000Z',
   }] });
-  assert.ok(csv.startsWith('\uFEFF"Date (IST)"'));
-  assert.ok(csv.includes('"2026-09-24","00:00:00","\'=1+1","food_drink","Not specified","125.50","Yes"\r\n'));
+  assert.ok(csv.startsWith('\uFEFF"Expense date (IST)"'));
+  assert.ok(csv.includes('"2026-09-24","2026-09-24 00:00:00","\'=1+1","food_drink","Not specified","125.50"\r\n'));
   assert.equal(csv.includes('user_id'), false);
 });
 
