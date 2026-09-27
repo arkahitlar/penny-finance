@@ -23,6 +23,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 a { color: inherit; text-decoration: none; }
 p, h1, h2, h3 { margin: 0; }
 [hidden] { display: none !important; }
+.session-loading { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: var(--muted); font-size: 14px; }
+.session-loading img { border-radius: 14px; box-shadow: 0 4px 0 var(--shadow); }
 .app-shell { width: 100%; max-width: 1280px; padding: 0 48px; margin: 0 auto; }
 .site-header { min-height: 106px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid #d7dccd; }
 .brand { display: inline-flex; gap: 9px; align-items: center; font-size: 34px; font-weight: 850; letter-spacing: -1.9px; }

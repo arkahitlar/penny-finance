@@ -269,6 +269,7 @@ function clearFinancialState() {
 
 function renderAccount() {
   const hasJournal = Boolean(user || demo);
+  $('#session-loading').hidden = true;
   $('#auth-view').hidden = hasJournal;
   $('#app-nav').hidden = !hasJournal;
   $('#today-view').hidden = !hasJournal || activeView !== 'today';

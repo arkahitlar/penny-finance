@@ -27,7 +27,12 @@
     </header>
 
     <main>
-      <section class="auth-view" id="auth-view" aria-labelledby="welcome-title">
+      <section class="session-loading" id="session-loading" role="status" aria-live="polite">
+        <img src="/favicon.svg" width="48" height="48" alt="">
+        <p>Opening Penny…</p>
+        <noscript>Please enable JavaScript to open your journal.</noscript>
+      </section>
+      <section class="auth-view" id="auth-view" aria-labelledby="welcome-title" hidden>
         <div class="auth-intro">
           <span class="welcome-mark" aria-hidden="true">₹<i>✳</i></span>
           <p class="eyebrow">YOUR MONEY, A LITTLE CLEARER</p>
